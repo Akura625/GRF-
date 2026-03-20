@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シフト管理 — ゴールドリシャール福岡</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f7f5f2;--surface:#ffffff;--surface2:#f0ede8;
+    --border:#ddd8d0;--border2:#c8c2b8;
+    --text:#1a1714;--text2:#6b6560;--text3:#a09890;
+    --green:#1a7a5a;--green-bg:#e8f5ef;
+    --red:#c0392b;--red-bg:#fdf0ef;
+    --blue:#1a5fa0;--blue-bg:#eaf2fc;
+    --gold:#b8860b;--gold-bg:#fdf6e3;
+    --radius:8px;--radius-lg:12px;
+  }
+  body{font-family:'Noto Sans JP',sans-serif;font-size:13px;background:var(--bg);color:var(--text);min-height:100vh}
+  .header{background:var(--text);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+  .header-title{font-size:15px;font-weight:700;letter-spacing:0.08em}
+  .header-sub{font-size:11px;color:#aaa;letter-spacing:0.05em}
+  .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px}
+  .tab{padding:12px 18px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;color:var(--text2);font-weight:500;transition:all .2s}
+  .tab.active{color:var(--green);border-bottom-color:var(--green)}
+  .tab:hover:not(.active){color:var(--text)}
+  .main{padding:16px}
+  .view{display:none}.view.active{display:block}
+  h3{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text)}
+  input[type=text],input[type=number],select{
+    padding:7px 10px;font-size:13px;font-family:inherit;
+    border:1px solid var(--border);border-radius:var(--radius);
+    background:var(--surface);color:var(--text);width:100%;
+    transition:border-color .15s;
+  }
+  input:focus,select:focus{outline:none;border-color:var(--green)}
+  .btn{
+    padding:7px 14px;font-size:12px;font-family:inherit;font-weight:500;
+    border:1px solid var(--border);border-radius:var(--radius);
+    background:var(--surface);color:var(--text);cursor:pointer;
+    white-space:nowrap;transition:all .15s;
+  }
+  .btn:hover{background:var(--surface2)}
+  .btn-green{border-color:var(--green);color:var(--green)}.btn-green:hover{background:var(--green-bg)}
+  .btn-red{border-color:var(--red);color:var(--red)}.btn-red:hover{background:var(--red-bg)}
+  .btn-blue{border-color:var(--blue);color:var(--blue)}.btn-blue:hover{background:var(--blue-bg)}
+  .btn-gold{background:var(--text);color:#fff;border-color:var(--text)}.btn-gold:hover{opacity:.85}
+  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .wk-nav{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .wk-label{font-size:13px;font-weight:700;min-width:240px;text-align:center;color:var(--text)}
+  .wk-year{font-size:11px;color:var(--text3);display:block;text-align:center;margin-bottom:-2px}
+  .tags{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+  .tag{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:500}
+  .tag-r{background:var(--red-bg);color:var(--red)}
+  .tag-f{background:var(--green-bg);color:var(--green)}
+  .tag-l{background:var(--blue-bg);color:var(--blue)}
+  .tbl-wrap{overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--surface)}
+  table{border-collapse:collapse;font-size:11px;width:100%}
+  th,td{border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:5px 7px;text-align:center;white-space:nowrap}
+  th:last-child,td:last-child{border-right:none}
+  tr:last-child td{border-bottom:none}
+  th{background:var(--surface2);font-weight:700;font-size:10px;color:var(--text2)}
+  td.name-c{text-align:left;padding-left:10px;background:var(--surface2);font-weight:500;font-size:12px;min-width:58px;color:var(--text)}
+  td.no-c{background:var(--surface2);color:var(--text3);font-size:10px;width:26px}
+  td.sum-c{background:#fafaf8;font-size:10px;color:var(--text2);font-weight:700}
+  .v-rest{color:var(--red);font-weight:700}
+  .v-free{color:var(--green);font-weight:700}
+  .v-last{color:var(--blue);font-weight:700}
+  .v-work{color:var(--text)}
+  .cell-btn{cursor:pointer;border-radius:3px;padding:2px 5px;display:inline-block;min-width:50px;font-size:11px;transition:background .1s}
+  .cell-btn:hover{background:var(--surface2)}
+  .edit-inp{width:62px;padding:2px 5px;font-size:11px;border:1.5px solid var(--blue);border-radius:4px;text-align:center;background:#fff;color:var(--text);font-family:inherit}
+  .section{margin-bottom:14px;padding:12px 14px;background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border)}
+  .staff-chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+  .chip{font-size:11px;padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--text);transition:all .15s}
+  .chip:hover{background:var(--red-bg);border-color:var(--red);color:var(--red)}
+  .sync-status{font-size:11px;padding:4px 10px;border-radius:var(--radius);margin-left:6px}
+  .sync-ok{background:var(--green-bg);color:var(--green)}
+  .sync-err{background:var(--red-bg);color:var(--red)}
+  .sync-pending{background:var(--gold-bg);color:var(--gold)}
+  .info-box{font-size:11px;color:var(--text2);padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);line-height:1.9;margin-bottom:12px;background:var(--surface2)}
+  .staff-sel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;margin-bottom:14px}
+  .staff-sel-btn{
+    padding:10px 6px;font-size:13px;font-family:inherit;font-weight:500;
+    border:1px solid var(--border);border-radius:var(--radius);
+    background:var(--surface);color:var(--text);cursor:pointer;text-align:center;
+    transition:all .15s;
+  }
+  .staff-sel-btn:hover{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+  .my-inp-day{
+    display:grid;grid-template-columns:100px 70px 70px 80px;
+    gap:6px;align-items:center;padding:8px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .my-inp-day:last-child{border:none}
+  .day-label{font-size:12px;font-weight:700}
+  .dot-sun{color:var(--red)}.dot-sat{color:var(--blue)}
+  .gs-row{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+  .gs-label{font-size:12px;min-width:120px;color:var(--text2);font-weight:500}
+  .gas-code{
+    width:100%;height:220px;font-size:10px;font-family:'Courier New',monospace;
+    border:1px solid var(--border);border-radius:var(--radius);padding:10px;
+    background:var(--surface2);color:var(--text);resize:vertical;line-height:1.6;
+  }
+  .badge{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:700}
+  .badge-new{background:var(--gold-bg);color:var(--gold);border:1px solid #e8d080}
+  @media(max-width:480px){
+    .my-inp-day{grid-template-columns:90px 60px 60px 72px;gap:4px}
+    .wk-nav{gap:5px}
+    .wk-label{min-width:0;font-size:12px}
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="header-title">SHIFT MANAGER</div>
+    <div class="header-sub" id="header-shop">ゴールドリシャール福岡</div>
+  </div>
+  <div style="font-size:11px;color:#888" id="header-date"></div>
+</div>
+<div class="tabs">
+  <span class="tab" onclick="switchTab('admin')">管理画面</span>
+  <span class="tab active" onclick="switchTab('staff')">スタッフ入力</span>
+  <span class="tab" onclick="switchTab('settings')">設定</span>
+</div>
+<div class="main">
+
+<!-- ADMIN -->
+<div id="view-admin" class="view">
+  <div class="wk-nav">
+    <button class="btn" onclick="changeWeek(-1)">◀ 前週</button>
+    <div>
+      <span class="wk-year" id="wk-year"></span>
+      <span class="wk-label" id="wk-label"></span>
+    </div>
+    <button class="btn" onclick="changeWeek(1)">次週 ▶</button>
+    <button class="btn btn-blue" onclick="goToday()">今週</button>
+    <button class="btn btn-gold" onclick="syncToSheets()" id="sync-btn">▲ Sheets同期</button>
+    <span id="sync-status"></span>
+  </div>
+  <div class="tags">
+    <span class="tag tag-r">休 = 休み</span>
+    <span class="tag tag-f">F = フリー（終了未定）</span>
+    <span class="tag tag-l">L = ラスト（最後まで）</span>
+    <span style="font-size:10px;color:var(--text3);margin-left:4px">※セルをクリックで編集</span>
+  </div>
+  <div class="tbl-wrap"><table id="admin-table"></table></div>
+</div>
+
+<!-- STAFF -->
+<div id="view-staff" class="view active">
+  <div id="staff-select-screen">
+    <div class="section">
+      <h3 style="margin-bottom:12px">自分の名前を選んでください</h3>
+      <div class="staff-sel-grid" id="staff-sel-grid"></div>
+    </div>
+  </div>
+  <div id="staff-input-screen" style="display:none">
+    <div class="section">
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn" onclick="backToStaffSel()">← 戻る</button>
+        <span style="font-weight:700;font-size:15px" id="staff-name-hd"></span>
+        <span style="font-size:11px;color:var(--text3)" id="staff-week-hd"></span>
+      </div>
+      <div class="info-box">
+        開始・終了を入力してください。<br>
+        終了欄：数字（例: 22）、F（フリー・終了未定）、L（ラスト・最後まで）<br>
+        空欄のままでも構いません。
+      </div>
+      <div id="staff-days-form"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn btn-green" onclick="submitStaffShift()">希望を登録する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="view-settings" class="view">
+  <div class="section">
+    <h3>Google Sheets 連携</h3>
+    <div class="info-box">
+      ① Google スプレッドシートを開く → 拡張機能 → Apps Script<br>
+      ② 下記「GASコードを表示」からコードをコピーして貼り付け<br>
+      ③ デプロイ → 新しいデプロイ → ウェブアプリ → アクセス：全員<br>
+      ④ 発行された URL を下記に貼り付けて保存
+    </div>
+    <div class="gs-row">
+      <span class="gs-label">Apps Script URL</span>
+      <input type="text" id="gs-url" placeholder="https://script.google.com/macros/s/..." style="flex:1;min-width:200px">
+    </div>
+    <div class="gs-row">
+      <span class="gs-label">スプレッドシートID</span>
+      <input type="text" id="gs-id" placeholder="1lJLbvV_w6wx1Y9zh..." style="flex:1;min-width:200px">
+    </div>
+    <div class="gs-row">
+      <button class="btn btn-green" onclick="saveSettings()">保存</button>
+      <button class="btn btn-blue" onclick="testConnection()">接続テスト</button>
+      <span id="gs-test-status"></span>
+    </div>
+  </div>
+  <div class="section">
+    <h3>GASコード（クリックしてコピー）</h3>
+    <button class="btn btn-blue" onclick="toggleGasCode()" style="margin-bottom:8px">GASコードを表示／非表示</button>
+    <div id="gas-code-box" style="display:none">
+      <textarea class="gas-code" id="gas-textarea" readonly></textarea>
+      <button class="btn btn-gold" onclick="copyGas()" style="margin-top:6px">コピー</button>
+    </div>
+  </div>
+  <div class="section">
+    <h3>スタッフ管理</h3>
+    <div class="staff-chips" id="staff-chips"></div>
+    <div class="row">
+      <input type="text" id="new-staff" placeholder="新しいスタッフ名" style="max-width:150px">
+      <button class="btn btn-green" onclick="addStaff()">追加</button>
+    </div>
+  </div>
+  <div class="section">
+    <h3>店舗設定</h3>
+    <div class="row">
+      <span style="font-size:12px;min-width:70px;color:var(--text2)">店舗名</span>
+      <input type="text" id="shop-name" value="ゴールドリシャール福岡" style="flex:1;max-width:260px">
+      <button class="btn btn-green" onclick="saveShopName()">保存</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- .main -->
+
+<script>
+const DOW=['月','火','水','木','金','土','日'];
+let S={
+  staffList:['太田','古野','滝下','清水','中村','岡','徳永','板倉','柴咲','吉岡','今泉','平野','浅子','木藤','曾我部','宮村','永田','飯田','竹本','スタッフ20','スタッフ21','スタッフ22','スタッフ23','スタッフ24','スタッフ25'],
+  shifts:{},weekOffset:0,
+  gsUrl:'',gsId:'',shopName:'ゴールドリシャール福岡'
+};
+
+// ---- LocalStorage ----
+function loadLocal(){try{const d=localStorage.getItem('shiftApp_v2');if(d)Object.assign(S,JSON.parse(d));}catch(e){}}
+function saveLocal(){try{localStorage.setItem('shiftApp_v2',JSON.stringify(S));}catch(e){}}
+loadLocal();
+
+// ---- Date utils ----
+function getWeekDates(offset){
+  const today=new Date();
+  const dow=today.getDay();
+  const mon=new Date(today);
+  mon.setDate(today.getDate()-(dow===0?6:dow-1)+offset*7);
+  const days=[];
+  for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);days.push(d);}
+  return days;
+}
+function fmtDate(d){return`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`}
+function getKey(staff,ds){return staff+'__'+ds}
+
+// ---- Header ----
+(function(){
+  const now=new Date();
+  document.getElementById('header-date').textContent=
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${DOW[now.getDay()===0?6:now.getDay()-1]}）`;
+})();
+
+// ---- Password ----
+const PASS="0000";
+let unlockedTabs={admin:false,settings:false};
+function askPass(name){
+  const p=prompt("パスワードを入力してください");
+  if(p===PASS){unlockedTabs[name]=true;return true;}
+  if(p!==null)alert("パスワードが違います");
+  return false;
+}
+
+// ---- Tab ----
+function switchTab(name){
+  if((name==="admin"||name==="settings")&&!unlockedTabs[name]){
+    if(!askPass(name))return;
+  }
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  const tabs=["admin","staff","settings"];
+  document.querySelectorAll(".tab")[tabs.indexOf(name)].classList.add("active");
+  document.getElementById("view-"+name).classList.add("active");
+  if(name==="staff")renderStaffSel();
+  if(name==="settings"){renderChips();loadSettingsUI();}
+}
+
+// ---- Admin ----
+function changeWeek(d){S.weekOffset+=d;saveLocal();renderAdmin();}
+function goToday(){S.weekOffset=0;saveLocal();renderAdmin();}
+
+function getCellClass(val){
+  if(!val)return 'v-work';
+  if(val==='休')return 'v-rest';
+  if(/-L$/i.test(val))return 'v-last';
+  if(/-F$/i.test(val))return 'v-free';
+  return 'v-work';
+}
+
+function renderAdmin(){
+  const days=getWeekDates(S.weekOffset);
+  const s=days[0],e=days[6];
+  document.getElementById('wk-year').textContent=`${s.getFullYear()}年`;
+  document.getElementById('wk-label').textContent=
+    `${s.getMonth()+1}/${s.getDate()}（${DOW[0]}）〜 ${e.getMonth()+1}/${e.getDate()}（${DOW[6]}）`;
+  const tbl=document.getElementById('admin-table');
+  let html='<thead><tr><th class="no-c">No</th><th style="min-width:58px">名前</th>';
+  days.forEach((d,i)=>{
+    const isSun=d.getDay()===0,isSat=d.getDay()===6;
+    const col=isSun?'color:var(--red)':isSat?'color:var(--blue)':'';
+    html+=`<th style="${col}">${d.getMonth()+1}/${d.getDate()}<br>${DOW[i]}</th>`;
+  });
+  html+='<th>備考</th></tr></thead><tbody>';
+  const dc=days.map(d=>{
+    const ds=fmtDate(d);let day=0,night=0;
+    S.staffList.forEach(st=>{
+      const v=S.shifts[getKey(st,ds)]||'';
+      if(v&&v!=='休'){const n=parseInt(v);if(!isNaN(n)){if(n<18)day++;else night++;}}
+    });
+    return{day,night,total:day+night};
+  });
+  S.staffList.forEach((staff,idx)=>{
+    html+=`<tr><td class="no-c">${idx+1}</td><td class="name-c">${staff}</td>`;
+    days.forEach(d=>{
+      const ds=fmtDate(d);
+      const val=S.shifts[getKey(staff,ds)]||'';
+      const cls=getCellClass(val);
+      const eid='e_'+idx+'_'+d.getTime();
+      html+=`<td><span class="cell-btn ${cls}" id="${eid}" onclick="startEdit('${staff.replace(/'/g,"\\'")}','${ds}','${val.replace(/'/g,"\\'")}','${eid}')">${val||'－'}</span></td>`;
+    });
+    html+='<td></td></tr>';
+  });
+  ['昼人数','夜人数','合計'].forEach((label,li)=>{
+    html+=`<tr><td class="sum-c" colspan="2" style="text-align:right;padding-right:8px">${label}</td>`;
+    days.forEach((_,di)=>{
+      const v=li===0?dc[di].day:li===1?dc[di].night:dc[di].total;
+      const col=li===0?'color:var(--red)':'';
+      html+=`<td class="sum-c" style="${col}">${v}</td>`;
+    });
+    html+='<td></td></tr>';
+  });
+  tbl.innerHTML=html+'</tbody>';
+}
+
+function startEdit(staff,ds,cur,eid){
+  const cell=document.getElementById(eid);if(!cell)return;
+  const inp=document.createElement('input');
+  inp.type='text';inp.className='edit-inp';inp.value=cur;inp.placeholder='20-L';
+  cell.replaceWith(inp);inp.focus();inp.select();
+  function commit(){
+    const v=inp.value.trim().toUpperCase();
+    if(v===''){delete S.shifts[getKey(staff,ds)];}else{S.shifts[getKey(staff,ds)]=v;}
+    saveLocal();renderAdmin();
+  }
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')commit();if(e.key==='Escape'){saveLocal();renderAdmin();}});
+}
+
+// ---- Staff input ----
+function renderStaffSel(){
+  const g=document.getElementById('staff-sel-grid');g.innerHTML='';
+  S.staffList.forEach(name=>{
+    const b=document.createElement('button');
+    b.className='staff-sel-btn';b.textContent=name;
+    b.onclick=()=>openStaffInput(name);g.appendChild(b);
+  });
+  document.getElementById('staff-select-screen').style.display='';
+  document.getElementById('staff-input-screen').style.display='none';
+}
+
+function openStaffInput(name){
+  S.selectedStaff=name;
+  document.getElementById('staff-name-hd').textContent=name;
+  const days=getWeekDates(S.weekOffset);
+  const s=days[0],e=days[6];
+  document.getElementById('staff-week-hd').textContent=
+    `${s.getFullYear()}年 ${s.getMonth()+1}/${s.getDate()}〜${e.getMonth()+1}/${e.getDate()}`;
+  const form=document.getElementById('staff-days-form');
+  let html='';
+  days.forEach((d,i)=>{
+    const ds=fmtDate(d);
+    const val=S.shifts[getKey(name,ds)]||'';
+    const isSun=d.getDay()===0,isSat=d.getDay()===6;
+    const dcls=isSun?'dot-sun':isSat?'dot-sat':'';
+    const isRest=val==='休';
+    let start='',end='';
+    if(val&&val!=='休'){const m=val.match(/^(\d+)-(.+)$/);if(m){start=m[1];end=m[2];}}
+    html+=`<div class="my-inp-day">
+      <span class="day-label ${dcls}">${d.getMonth()+1}/${d.getDate()}（${DOW[i]}）</span>
+      <input type="number" id="s_${i}" placeholder="開始" value="${start}" min="9" max="29" style="font-size:12px;padding:5px 7px;text-align:center" ${isRest?'disabled':''}>
+      <input type="text" id="e_${i}" placeholder="終了/F/L" value="${end}" style="font-size:12px;padding:5px 7px;text-align:center" ${isRest?'disabled':''}>
+      <select id="r_${i}" style="font-size:12px;padding:5px 7px" onchange="toggleRestDay(${i})">
+        <option value="">出勤</option>
+        <option value="休" ${isRest?'selected':''}>休み</option>
+      </select>
+    </div>`;
+  });
+  form.innerHTML=html;
+  document.getElementById('staff-select-screen').style.display='none';
+  document.getElementById('staff-input-screen').style.display='';
+}
+
+function toggleRestDay(i){
+  const isRest=document.getElementById('r_'+i).value==='休';
+  document.getElementById('s_'+i).disabled=isRest;
+  document.getElementById('e_'+i).disabled=isRest;
+}
+function backToStaffSel(){
+  document.getElementById('staff-select-screen').style.display='';
+  document.getElementById('staff-input-screen').style.display='none';
+}
+function submitStaffShift(){
+  const name=S.selectedStaff;
+  const days=getWeekDates(S.weekOffset);
+  days.forEach((d,i)=>{
+    const ds=fmtDate(d);
+    const r=document.getElementById('r_'+i).value;
+    if(r==='休'){S.shifts[getKey(name,ds)]='休';return;}
+    const start=(document.getElementById('s_'+i).value||'').trim();
+    const end=(document.getElementById('e_'+i).value||'').trim().toUpperCase();
+    if(!start){delete S.shifts[getKey(name,ds)];return;}
+    S.shifts[getKey(name,ds)]=end?`${start}-${end}`:start;
+  });
+  saveLocal();
+  alert(name+'のシフト希望を登録しました！');
+  backToStaffSel();renderAdmin();
+}
+
+// ---- Settings ----
+function renderChips(){
+  const el=document.getElementById('staff-chips');el.innerHTML='';
+  S.staffList.forEach(name=>{
+    const c=document.createElement('span');
+    c.className='chip';c.textContent=name+' ×';
+    c.onclick=()=>{if(confirm(name+'を削除しますか？')){S.staffList=S.staffList.filter(n=>n!==name);saveLocal();renderChips();renderAdmin();}};
+    el.appendChild(c);
+  });
+}
+function addStaff(){
+  const inp=document.getElementById('new-staff');
+  const n=inp.value.trim();
+  if(!n||S.staffList.includes(n))return;
+  S.staffList.push(n);inp.value='';saveLocal();renderChips();renderAdmin();
+}
+function loadSettingsUI(){
+  document.getElementById('gs-url').value=S.gsUrl||'';
+  document.getElementById('gs-id').value=S.gsId||'';
+  document.getElementById('shop-name').value=S.shopName||'';
+  document.getElementById('header-shop').textContent=S.shopName||'';
+}
+function saveSettings(){
+  S.gsUrl=document.getElementById('gs-url').value.trim();
+  S.gsId=document.getElementById('gs-id').value.trim();
+  saveLocal();showSyncStatus('gs-test-status','保存しました','sync-ok');
+}
+function saveShopName(){
+  S.shopName=document.getElementById('shop-name').value.trim();
+  document.getElementById('header-shop').textContent=S.shopName;
+  saveLocal();alert('保存しました');
+}
+
+// ---- GAS Code ----
+const GAS_CODE=`// ============================================
+// Google Apps Script — シフト表書き込み
+// スプレッドシートにバインドして貼り付ける
+// デプロイ: ウェブアプリ / アクセス: 全員
+// ============================================
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    if (data.action === 'writeShift') {
+      writeShift(data);
+      return ContentService.createTextOutput('OK')
+        .setMimeType(ContentService.MimeType.TEXT);
+    }
+  } catch(err) {
+    return ContentService.createTextOutput('ERROR: ' + err)
+      .setMimeType(ContentService.MimeType.TEXT);
+  }
+}
+
+function doGet(e) {
+  if (e.parameter && e.parameter.action === 'ping') {
+    return ContentService.createTextOutput('OK')
+      .setMimeType(ContentService.MimeType.TEXT);
+  }
+}
+
+function writeShift(data) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = 'シフト';
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) sheet = ss.insertSheet(sheetName);
+  sheet.clearContents();
+
+  // タイトル行
+  sheet.getRange(1, 1).setValue(data.shopName + ' シフト表');
+  sheet.getRange(1, 2).setValue(data.weekLabel);
+
+  // ヘッダー行
+  var headers = ['No', '名前'];
+  data.dates.forEach(function(d) { headers.push(d.label + '(' + d.dow + ')'); });
+  headers.push('備考');
+  sheet.getRange(2, 1, 1, headers.length).setValues([headers]);
+
+  // スタッフ行
+  data.staff.forEach(function(name, i) {
+    var row = [i + 1, name].concat(data.shifts[i]).concat(['']);
+    sheet.getRange(3 + i, 1, 1, row.length).setValues([row]);
+  });
+
+  var startRow = 3 + data.staff.length;
+  var dateCount = data.dates.length;
+
+  // 集計行（昼・夜・合計）
+  var labels = ['昼人数', '夜人数', '合計'];
+  labels.forEach(function(label, li) {
+    var row = ['', label];
+    for (var di = 0; di < dateCount; di++) {
+      var day = 0, night = 0;
+      data.staff.forEach(function(_, si) {
+        var v = data.shifts[si][di];
+        if (v && v !== '休') {
+          var n = parseInt(v);
+          if (!isNaN(n)) { if (n < 18) day++; else night++; }
+        }
+      });
+      if (li === 0) row.push(day);
+      else if (li === 1) row.push(night);
+      else row.push(day + night);
+    }
+    row.push('');
+    sheet.getRange(startRow + li, 1, 1, row.length).setValues([row]);
+  });
+
+  // 書式
+  var totalRows = startRow + 3;
+  var totalCols = 2 + dateCount + 1;
+  var range = sheet.getRange(2, 1, totalRows - 1, totalCols);
+  range.setBorder(true, true, true, true, true, true);
+  sheet.getRange(2, 1, 1, totalCols).setFontWeight('bold')
+    .setBackground('#2c2c2a').setFontColor('#ffffff');
+  sheet.setFrozenRows(2);
+  sheet.setFrozenColumns(2);
+  SpreadsheetApp.flush();
+}`;
+
+function toggleGasCode(){
+  const box=document.getElementById('gas-code-box');
+  if(box.style.display!=='none'){box.style.display='none';return;}
+  document.getElementById('gas-textarea').value=GAS_CODE;
+  box.style.display='';
+}
+function copyGas(){
+  const ta=document.getElementById('gas-textarea');
+  ta.select();document.execCommand('copy');alert('コピーしました！');
+}
+
+// ---- Sheets sync ----
+async function syncToSheets(){
+  if(!S.gsUrl){alert('設定タブで Apps Script URL を入力してください');return;}
+  showSyncStatus('sync-status','同期中...','sync-pending');
+  const days=getWeekDates(S.weekOffset);
+  const payload={
+    action:'writeShift',
+    shopName:S.shopName,
+    weekLabel:`${days[0].getFullYear()}年${days[0].getMonth()+1}/${days[0].getDate()}〜${days[6].getMonth()+1}/${days[6].getDate()}`,
+    dates:days.map(d=>({date:fmtDate(d),label:`${d.getMonth()+1}/${d.getDate()}`,dow:DOW[d.getDay()===0?6:d.getDay()-1]})),
+    staff:S.staffList,
+    shifts:S.staffList.map(name=>days.map(d=>S.shifts[getKey(name,fmtDate(d))]||''))
+  };
+  try{
+    const r=await fetch(S.gsUrl,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify(payload)
+    });
+    showSyncStatus('sync-status','同期完了 ✓（スプレッドシートを確認してください）','sync-ok');
+  }catch(e){showSyncStatus('sync-status','通信エラー: '+e.message,'sync-err');}
+}
+
+async function testConnection(){
+  const url=document.getElementById('gs-url').value.trim();
+  if(!url){showSyncStatus('gs-test-status','URLを入力してください','sync-err');return;}
+  showSyncStatus('gs-test-status','接続中...','sync-pending');
+  try{
+    const r=await fetch(url+'?action=ping',{mode:'no-cors'});
+    showSyncStatus('gs-test-status','接続OK ✓','sync-ok');
+  }catch(e){showSyncStatus('gs-test-status','エラー — GAS設定を確認','sync-err');}
+}
+
+function showSyncStatus(id,msg,cls){
+  const el=document.getElementById(id);
+  el.textContent=msg;el.className='sync-status '+cls;
+  setTimeout(()=>{el.textContent='';el.className='sync-status';},5000);
+}
+
+// 起動時はスタッフ入力を表示
+document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+document.getElementById("view-staff").classList.add("active");
+document.querySelectorAll(".tab")[1].classList.add("active");
+renderStaffSel();
+</script>
+</body>
+</html>
