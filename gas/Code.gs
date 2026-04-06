@@ -9,12 +9,14 @@
  *    https://script.google.com/
  *
  * 2. スクリプトプロパティに以下を設定（歯車アイコン > スクリプトプロパティ）:
- *    CLAUDE_API_KEY      : Anthropic APIキー
- *                          https://console.anthropic.com/
- *    UNSPLASH_ACCESS_KEY : Unsplash APIキー
- *                          https://unsplash.com/developers
- *    NOTE_EMAIL          : note.com登録メールアドレス
- *    NOTE_PASSWORD       : note.com パスワード
+ *    CLAUDE_API_KEY        : Anthropic APIキー
+ *                            https://console.anthropic.com/
+ *    UNSPLASH_ACCESS_KEY   : Unsplash APIキー
+ *                            https://unsplash.com/developers
+ *    NOTE_EMAIL            : note.com登録メールアドレス
+ *    NOTE_PASSWORD         : note.com パスワード
+ *    AMAZON_ASSOCIATE_TAG  : Amazonアソシエイトタグ（例: yourtag-22）
+ *                            https://affiliate.amazon.co.jp/
  *
  * 3. 時間ベースのトリガーを設定
  *    「トリガーを追加」> 関数: autoPostToNote > 時間ベース > 毎日（例: 午前9時）
@@ -36,13 +38,19 @@ function autoPostToNote() {
   const article = generateArticle(config.claudeApiKey, keyword);
   Logger.log('タイトル: ' + article.title);
 
-  // 3. Unsplashで関連画像を取得
+  // 3. Amazonアソシエイト埋め込みURLを生成
+  const amazonEmbeds = config.amazonAssociateTag
+    ? buildAmazonEmbeds(config.claudeApiKey, keyword, article.body, config.amazonAssociateTag)
+    : [];
+  Logger.log('Amazon埋め込み数: ' + amazonEmbeds.length);
+
+  // 4. Unsplashで関連画像を取得
   const imageUrl = getUnsplashImage(config.unsplashAccessKey, keyword);
   Logger.log('画像URL: ' + imageUrl);
 
-  // 4. note.comにログインして投稿
+  // 5. note.comにログインして投稿
   const noteSession = loginToNote(config.noteEmail, config.notePassword);
-  const noteUrl = createAndPublishNote(noteSession, article.title, article.body, imageUrl);
+  const noteUrl = createAndPublishNote(noteSession, article.title, article.body, imageUrl, amazonEmbeds);
 
   Logger.log('投稿完了: ' + noteUrl);
   Logger.log('=== 完了 ===');
@@ -60,6 +68,7 @@ function getConfig() {
     unsplashAccessKey: props.getProperty('UNSPLASH_ACCESS_KEY'),
     noteEmail: props.getProperty('NOTE_EMAIL'),
     notePassword: props.getProperty('NOTE_PASSWORD'),
+    amazonAssociateTag: props.getProperty('AMAZON_ASSOCIATE_TAG'),
   };
 
   const missing = Object.entries(config)
@@ -163,6 +172,70 @@ function generateArticle(apiKey, keyword) {
 }
 
 // ─────────────────────────────────────────
+// AmazonアソシエイトのnoteEmbedURLを生成
+// ─────────────────────────────────────────
+
+/**
+ * 記事内容からAmazon検索キーワードを2〜3個提案してもらい、
+ * note.comの埋め込み形式で使えるURLを配列で返す。
+ *
+ * note.comでは本文中にURLを単独行で貼ると埋め込みカードになる。
+ * 例: https://www.amazon.co.jp/s?k=キーワード&tag=xxxx-22
+ */
+function buildAmazonEmbeds(apiKey, keyword, articleBody, associateTag) {
+  const url = 'https://api.anthropic.com/v1/messages';
+
+  const prompt = `以下の記事を読んで、読者が興味を持ちそうなAmazon商品の検索キーワードを2〜3個提案してください。
+
+トレンドキーワード: ${keyword}
+
+記事本文（抜粋）:
+${articleBody.substring(0, 500)}
+
+【出力形式】
+JSON配列のみ返してください。他のテキスト不要。
+["キーワード1", "キーワード2", "キーワード3"]`;
+
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    payload: JSON.stringify({
+      model: 'claude-opus-4-6',
+      max_tokens: 256,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    muteHttpExceptions: true,
+  };
+
+  const response = UrlFetchApp.fetch(url, options);
+  if (response.getResponseCode() !== 200) {
+    Logger.log('Amazon用キーワード取得失敗: ' + response.getContentText());
+    return [];
+  }
+
+  const data = JSON.parse(response.getContentText());
+  const text = data.content[0].text.trim();
+
+  const arrayMatch = text.match(/\[[\s\S]*\]/);
+  if (!arrayMatch) {
+    Logger.log('Amazon用キーワードのJSON配列が取得できませんでした: ' + text);
+    return [];
+  }
+
+  const keywords = JSON.parse(arrayMatch[0]);
+
+  // Amazon検索URLを構築（note.com埋め込み用）
+  return keywords.map(kw => {
+    const encoded = encodeURIComponent(kw);
+    return `https://www.amazon.co.jp/s?k=${encoded}&tag=${associateTag}`;
+  });
+}
+
+// ─────────────────────────────────────────
 // Unsplashでキーワード関連の画像を取得
 // ─────────────────────────────────────────
 function getUnsplashImage(accessKey, keyword) {
@@ -239,11 +312,18 @@ function loginToNote(email, password) {
 // ─────────────────────────────────────────
 // note.com 記事作成 & 公開
 // ─────────────────────────────────────────
-function createAndPublishNote(session, title, body, imageUrl) {
+function createAndPublishNote(session, title, body, imageUrl, amazonEmbeds) {
   // 画像をnoteのbodyの先頭に埋め込む（eyecatch画像の代替）
-  const fullBody = imageUrl
+  let fullBody = imageUrl
     ? `![header](${imageUrl})\n\n${body}`
     : body;
+
+  // Amazonアソシエイトリンクをnote埋め込み形式で末尾に追加
+  // note.comではURLを単独行に置くと埋め込みカードになる
+  if (amazonEmbeds && amazonEmbeds.length > 0) {
+    fullBody += '\n\n---\n\n## 関連商品\n\n';
+    fullBody += amazonEmbeds.join('\n\n');
+  }
 
   // Step 1: 下書き作成
   const createRes = UrlFetchApp.fetch('https://note.com/api/v2/text_notes', {
@@ -363,4 +443,16 @@ function testLogin() {
   const config = getConfig();
   const session = loginToNote(config.noteEmail, config.notePassword);
   Logger.log('ログイン成功。Cookies: ' + session.cookies.substring(0, 80) + '...');
+}
+
+/** AmazonアソシエイトURLの生成テスト */
+function testAmazonEmbeds() {
+  const config = getConfig();
+  if (!config.amazonAssociateTag) {
+    Logger.log('AMAZON_ASSOCIATE_TAG が未設定です');
+    return;
+  }
+  const urls = buildAmazonEmbeds(config.claudeApiKey, '桜', '日本の春を楽しむ方法...', config.amazonAssociateTag);
+  Logger.log('生成されたAmazon埋め込みURL:');
+  urls.forEach(u => Logger.log(u));
 }
