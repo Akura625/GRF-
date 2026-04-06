@@ -318,11 +318,13 @@ function createAndPublishNote(session, title, body, imageUrl, amazonEmbeds) {
     ? `![header](${imageUrl})\n\n${body}`
     : body;
 
-  // Amazonアソシエイトリンクをnote埋め込み形式で末尾に追加
-  // note.comではURLを単独行に置くと埋め込みカードになる
+  // Amazonアソシエイトリンクをnote「埋め込み」形式で追加
+  // note.comの埋め込み仕様: URLを空行で囲んだ単独行に置くと埋め込みカードになる
+  // ※ URLの前後に他のテキストを同じ行に置くと埋め込みにならないため注意
   if (amazonEmbeds && amazonEmbeds.length > 0) {
-    fullBody += '\n\n---\n\n## 関連商品\n\n';
-    fullBody += amazonEmbeds.join('\n\n');
+    // 各URLを独立した単独行として追加（前後に空行を入れる）
+    const embedBlock = amazonEmbeds.map(url => `\n${url}\n`).join('\n');
+    fullBody += '\n\n' + embedBlock;
   }
 
   // Step 1: 下書き作成
