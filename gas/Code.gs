@@ -9,8 +9,8 @@
  *    https://script.google.com/
  *
  * 2. スクリプトプロパティに以下を設定（歯車アイコン > スクリプトプロパティ）:
- *    CLAUDE_API_KEY        : Anthropic APIキー
- *                            https://console.anthropic.com/
+ *    GEMINI_API_KEY        : Gemini APIキー（無料で取得可能）
+ *                            https://aistudio.google.com/app/apikey
  *    UNSPLASH_ACCESS_KEY   : Unsplash APIキー
  *                            https://unsplash.com/developers
  *    NOTE_EMAIL            : note.com登録メールアドレス
@@ -34,13 +34,13 @@ function autoPostToNote() {
   const keyword = getTrendingKeyword();
   Logger.log('キーワード: ' + keyword);
 
-  // 2. Claude APIで記事生成
-  const article = generateArticle(config.claudeApiKey, keyword);
+  // 2. Gemini APIで記事生成
+  const article = generateArticle(config.geminiApiKey, keyword);
   Logger.log('タイトル: ' + article.title);
 
   // 3. Amazonアソシエイト埋め込みURLを生成
   const amazonEmbeds = config.amazonAssociateTag
-    ? buildAmazonEmbeds(config.claudeApiKey, keyword, article.body, config.amazonAssociateTag)
+    ? buildAmazonEmbeds(config.geminiApiKey, keyword, article.body, config.amazonAssociateTag)
     : [];
   Logger.log('Amazon埋め込み数: ' + amazonEmbeds.length);
 
@@ -64,7 +64,7 @@ function autoPostToNote() {
 function getConfig() {
   const props = PropertiesService.getScriptProperties();
   const config = {
-    claudeApiKey: props.getProperty('CLAUDE_API_KEY'),
+    geminiApiKey: props.getProperty('GEMINI_API_KEY'),
     unsplashAccessKey: props.getProperty('UNSPLASH_ACCESS_KEY'),
     noteEmail: props.getProperty('NOTE_EMAIL'),
     notePassword: props.getProperty('NOTE_PASSWORD'),
@@ -109,10 +109,10 @@ function getTrendingKeyword() {
 }
 
 // ─────────────────────────────────────────
-// Claude APIで記事生成
+// Gemini APIで記事生成
 // ─────────────────────────────────────────
 function generateArticle(apiKey, keyword) {
-  const url = 'https://api.anthropic.com/v1/messages';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
   const prompt = `あなたはnote.comで人気のブロガーです。
 今日の急上昇キーワード「${keyword}」に関連した、読者の興味を引く記事を書いてください。
@@ -131,36 +131,29 @@ function generateArticle(apiKey, keyword) {
   "body": "記事本文（マークダウン）"
 }`;
 
-  const payload = JSON.stringify({
-    model: 'claude-opus-4-6',
-    max_tokens: 2048,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
   const options = {
     method: 'post',
     contentType: 'application/json',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    payload: payload,
+    payload: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 2048 },
+    }),
     muteHttpExceptions: true,
   };
 
   const response = UrlFetchApp.fetch(url, options);
 
   if (response.getResponseCode() !== 200) {
-    throw new Error('Claude API エラー: ' + response.getContentText());
+    throw new Error('Gemini API エラー: ' + response.getContentText());
   }
 
   const data = JSON.parse(response.getContentText());
-  const text = data.content[0].text.trim();
+  const text = data.candidates[0].content.parts[0].text.trim();
 
   // レスポンスからJSONを抽出（コードブロックに包まれている場合も対応）
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error('Claude APIのレスポンスからJSONを抽出できませんでした: ' + text);
+    throw new Error('Gemini APIのレスポンスからJSONを抽出できませんでした: ' + text);
   }
 
   const article = JSON.parse(jsonMatch[0]);
@@ -183,7 +176,7 @@ function generateArticle(apiKey, keyword) {
  * 例: https://www.amazon.co.jp/s?k=キーワード&tag=xxxx-22
  */
 function buildAmazonEmbeds(apiKey, keyword, articleBody, associateTag) {
-  const url = 'https://api.anthropic.com/v1/messages';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
   const prompt = `以下の記事を読んで、読者が興味を持ちそうなAmazon商品の検索キーワードを2〜3個提案してください。
 
@@ -199,14 +192,9 @@ JSON配列のみ返してください。他のテキスト不要。
   const options = {
     method: 'post',
     contentType: 'application/json',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
     payload: JSON.stringify({
-      model: 'claude-opus-4-6',
-      max_tokens: 256,
-      messages: [{ role: 'user', content: prompt }],
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 256 },
     }),
     muteHttpExceptions: true,
   };
@@ -218,7 +206,7 @@ JSON配列のみ返してください。他のテキスト不要。
   }
 
   const data = JSON.parse(response.getContentText());
-  const text = data.content[0].text.trim();
+  const text = data.candidates[0].content.parts[0].text.trim();
 
   const arrayMatch = text.match(/\[[\s\S]*\]/);
   if (!arrayMatch) {
@@ -426,10 +414,10 @@ function testGetTrending() {
   Logger.log(getTrendingKeyword());
 }
 
-/** Claude API 記事生成テスト */
+/** Gemini API 記事生成テスト */
 function testGenerateArticle() {
   const config = getConfig();
-  const article = generateArticle(config.claudeApiKey, '桜');
+  const article = generateArticle(config.geminiApiKey, '桜');
   Logger.log('タイトル: ' + article.title);
   Logger.log('本文:\n' + article.body);
 }
@@ -439,6 +427,7 @@ function testGetImage() {
   const config = getConfig();
   Logger.log(getUnsplashImage(config.unsplashAccessKey, '桜'));
 }
+
 
 /** note.com ログインテスト */
 function testLogin() {
@@ -454,7 +443,7 @@ function testAmazonEmbeds() {
     Logger.log('AMAZON_ASSOCIATE_TAG が未設定です');
     return;
   }
-  const urls = buildAmazonEmbeds(config.claudeApiKey, '桜', '日本の春を楽しむ方法...', config.amazonAssociateTag);
+  const urls = buildAmazonEmbeds(config.geminiApiKey, '桜', '日本の春を楽しむ方法...', config.amazonAssociateTag);
   Logger.log('生成されたAmazon埋め込みURL:');
   urls.forEach(u => Logger.log(u));
 }
